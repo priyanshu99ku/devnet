@@ -28,6 +28,18 @@ const userSchema = new mongoose.Schema({
     gender: {
         type: String,
         enum: ['Male', 'Female', 'Other']
+    },
+    photoUrl: {
+        type: String,
+        default: 'https://i.pravatar.cc/150'
+    },
+    about: {
+        type: String,
+        trim: true,
+        default: 'No information provided.'
+    },
+    skills: {
+        type: [String] // Array of strings
     }
 }, {
     timestamps: true
