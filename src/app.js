@@ -2,28 +2,35 @@ const express = require("express");
 const connectDB = require('./config/database');
 const app = express();
 const User = require("./models/User");
+const { validateSignupData, validateUpdateData } = require('./utils/validation');
+const bcrypt = require('bcryptjs');
 
 app.use(express.json());
 
 app.post("/signup", async (req, res) => {
-  // Extract user data from request body
-  const { firstName, lastName, email, password, age, gender } = req.body;
+  const { errors, sanitizedData } = validateSignupData(req.body);
 
-  // Creating a new instance of the User model
-  const user = new User({
-    firstName,
-    lastName,
-    email,
-    password,
-    age,
-    gender,
-  });
+  if (errors.length > 0) {
+    return res.status(400).json({ errors });
+  }
 
   try {
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(sanitizedData.password, salt);
+    
+    const user = new User({
+      ...sanitizedData,
+      password: hashedPassword
+    });
+
     await user.save();
     console.log('User saved successfully:', user);
     res.send("User Added successfully!");
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(400).json({ msg: 'Email already exists' });
+    }
     console.error(err.message);
     res.status(500).send("Server Error");
   }
@@ -91,19 +98,67 @@ app.delete("/users/:id", async (req, res) => {
   }
 });
 
-// New PATCH API for /user - Update a user
 app.patch("/user", async (req, res) => {
-  const userId = req.body.userId;
-  const data = req.body;
+  const { errors, sanitizedData } = validateUpdateData(req.body);
+
+  if (errors.length > 0) {
+    return res.status(400).json({ errors });
+  }
+
+  const { userId, ...updateData } = sanitizedData;
 
   try {
-    const user = await User.findByIdAndUpdate({ _id: userId }, data, {
-      returnDocument: "after",
-    });
-    console.log(user);
-    res.send("User updated successfully");
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+
+    res.json({ success: true, user });
   } catch (err) {
-    res.status(400).send("Something went wrong");
+    if (err.code === 11000) {
+      return res.status(400).json({ msg: 'Email already exists' });
+    }
+    console.error(err.message);
+    res.status(500).send("Server Error");
+  }
+});
+
+// Login API
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Find user by email
+    const user = await User.findOne({ email });
+    
+    // Check if user exists
+    if (!user) {
+      return res.status(400).json({ msg: 'Invalid credentials' });
+    }
+
+    // Check password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ msg: 'Invalid credentials' });
+    }
+
+    // Send user data (excluding password)
+    const userData = user.toObject();
+    delete userData.password;
+    
+    res.json({
+      msg: 'Login successful',
+      user: userData
+    });
+
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
   }
 });
 
