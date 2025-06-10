@@ -1,4 +1,8 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs'); // Import bcrypt
+const jwt = require('jsonwebtoken'); // Import jsonwebtoken
+
+const JWT_SECRET = 'your-secret-key'; // Define JWT Secret here for now
 
 const userSchema = new mongoose.Schema({
     firstName: {
@@ -21,6 +25,14 @@ const userSchema = new mongoose.Schema({
     password: {
         type: String,
         required: true,
+        minlength: 8, // Minimum password length
+        validate: {
+            validator: function(v) {
+                // Regular expression to check for at least one uppercase letter, one lowercase letter, one number, and one special character
+                return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/.test(v);
+            },
+            message: props => `${props.value} is not a strong password! It must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.`
+        }
     },
     age: {
         type: Number,
@@ -44,6 +56,25 @@ const userSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+// Hash the plain text password before saving
+userSchema.pre('save', async function (next) {
+    if (this.isModified('password')) {
+        this.password = await bcrypt.hash(this.password, 10);
+    }
+    next();
+});
+
+// Method to compare password
+userSchema.methods.comparePassword = async function (candidatePassword) {
+    return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// Method to generate a JWT token
+userSchema.methods.generateAuthToken = function () {
+    const token = jwt.sign({ id: this._id, email: this.email }, JWT_SECRET, { expiresIn: '1h' });
+    return token;
+};
 
 const User = mongoose.model('User', userSchema);
 
