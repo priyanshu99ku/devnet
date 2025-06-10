@@ -1,11 +1,37 @@
 const express = require("express");
 const connectDB = require('./config/database');
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
 const app = express();
 const User = require("./models/User");
 const { validateSignupData, validateUpdateData } = require('./utils/validation');
 const bcrypt = require('bcryptjs');
+const auth = require('./middleware/auth'); // Import the auth middleware from the correct path
 
 app.use(express.json());
+app.use(cookieParser());
+
+// Route to send dummy cookie (Postman-friendly)
+app.get("/dummy-cookie", (req, res) => {
+  const cookieValue = 'test-value-' + Date.now(); // Add timestamp to make it unique
+  res.cookie('dummyCookie', cookieValue, {
+    httpOnly: true,
+    maxAge: 3600000, // 1 hour
+    secure: process.env.NODE_ENV === 'production'
+  });
+  
+  // Send back both the cookie details and the current cookies
+  res.json({
+    message: 'Dummy cookie has been set!',
+    cookieDetails: {
+      name: 'dummyCookie',
+      value: cookieValue,
+      maxAge: '1 hour',
+      httpOnly: true
+    },
+    currentCookies: req.cookies
+  });
+});
 
 app.post("/signup", async (req, res) => {
   const { errors, sanitizedData } = validateSignupData(req.body);
@@ -37,9 +63,9 @@ app.post("/signup", async (req, res) => {
 });
 
 // New GET API for /feed
-app.get("/feed", async (req, res) => {
+app.get("/feed", auth, async (req, res) => {
   try {
-    const users = await User.find({}).select('-password'); // Fetch all users, exclude password
+    const users = await User.find({}).select('-password');
     res.json({
       message: "Welcome to the Feed!",
       users: users
@@ -50,16 +76,15 @@ app.get("/feed", async (req, res) => {
   }
 });
 
-// New GET API for /user by email (matching image structure, using 'email' for schema compatibility)
-app.get("/user", async (req, res) => {
-  const userEmail = req.body.email; // Using 'email' to match User schema field
+app.get("/user", auth, async (req, res) => {
+  const userEmail = req.query.email;
   console.log('Received email for GET /user:', userEmail);
 
   try {
-    const user = await User.findOne({ email: userEmail }).select('-password'); // Exclude password
+    const user = await User.findOne({ email: userEmail }).select('-password');
 
     if (!user) {
-      return res.status(404).send("User not found"); // Send 404 if user is not found
+      return res.status(404).send("User not found");
     }
 
     res.send(user);
@@ -72,7 +97,7 @@ app.get("/user", async (req, res) => {
 // New GET API for /users - Get all users
 app.get("/users", async (req, res) => {
   try {
-    const users = await User.find({}).select('-password'); // Exclude password
+    const users = await User.find({}).select('-password');
     res.json({ success: true, count: users.length, users });
   } catch (error) {
     console.error(error.message);
@@ -147,17 +172,71 @@ app.post("/login", async (req, res) => {
       return res.status(400).json({ msg: 'Invalid credentials' });
     }
 
-    // Send user data (excluding password)
+    // Create JWT token
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    // Log the token to console
+    console.log('Generated JWT Token:', token);
+    console.log('Token Payload:', jwt.decode(token));
+
+    // Send user data (excluding password) and token
     const userData = user.toObject();
     delete userData.password;
     
+    // Set token in cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 3600000 // 1 hour in milliseconds
+    });
+    
     res.json({
       msg: 'Login successful',
-      user: userData
+      user: userData,
+      token
     });
 
   } catch (err) {
     console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// New POST API for /send-connection-request
+app.post("/send-connection-request", auth, async (req, res) => {
+  const { recipientId } = req.body;
+  const senderId = req.user.id; // ID of the authenticated user
+
+  if (!recipientId) {
+    return res.status(400).json({ msg: 'Recipient ID is required' });
+  }
+
+  try {
+    // In a real application, you would update user models here
+    // e.g., add recipientId to sender's 'sentRequests' array
+    // and add senderId to recipient's 'pendingRequests' array.
+    // For this example, we'll just simulate success.
+
+    // Find the recipient user (optional, but good for validation)
+    const recipient = await User.findById(recipientId);
+    if (!recipient) {
+      return res.status(404).json({ msg: 'Recipient user not found' });
+    }
+
+    // Prevent sending request to self
+    if (senderId === recipientId) {
+      return res.status(400).json({ msg: 'Cannot send connection request to yourself' });
+    }
+
+    console.log(`Connection request sent from user ${senderId} to user ${recipientId}`);
+    res.json({ success: true, message: 'Connection request sent successfully!' });
+
+  } catch (error) {
+    console.error(error.message);
     res.status(500).send('Server Error');
   }
 });
