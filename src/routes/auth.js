@@ -24,7 +24,13 @@ router.post("/signup", async (req, res) => {
     if (err.code === 11000) {
       return res.status(400).json({ msg: 'Email already exists' });
     }
+    // Handle Mongoose validation errors for password strength
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(el => el.message);
+      return res.status(400).json({ errors });
+    }
     console.error(err.message);
+    console.error(err.stack); // Add detailed stack trace
     res.status(500).send("Server Error");
   }
 });
@@ -66,6 +72,7 @@ router.post("/login", async (req, res) => {
 
   } catch (err) {
     console.error(err.message);
+    console.error(err.stack);
     res.status(500).send('Server Error');
   }
 });
@@ -77,6 +84,7 @@ router.post("/logout", auth, async (req, res) => {
     res.json({ msg: 'Logged out successfully' });
   } catch (error) {
     console.error(error.message);
+    console.error(error.stack);
     res.status(500).send('Server Error');
   }
 });

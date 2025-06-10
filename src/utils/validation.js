@@ -2,76 +2,87 @@ const validator = require('validator'); // Imports the validator library for rob
 
 // Validates and sanitizes data for user signup.
 const validateSignupData = (data) => {
-  const errors = []; // Collects all validation errors.
-  let { firstName, lastName, email, password, age, gender, photoUrl, about, skills } = data;
+  const errors = [];
+  const sanitizedData = {}; // Directly use sanitizedData for clearer assignment
+  const { firstName, lastName, email, password, age, gender, photoUrl, about, skills } = data;
 
-  // Validate and sanitize firstName: Ensures presence and prevents XSS.
+  // Validate and sanitize firstName
   if (validator.isEmpty(firstName || '')) {
     errors.push({ msg: 'First name is required' });
   } else {
-    firstName = validator.trim(firstName);
-    firstName = validator.escape(firstName);
+    sanitizedData.firstName = validator.trim(firstName);
+    sanitizedData.firstName = validator.escape(sanitizedData.firstName);
   }
 
-  // Validate and sanitize lastName: Ensures presence and prevents XSS.
+  // Validate and sanitize lastName
   if (validator.isEmpty(lastName || '')) {
     errors.push({ msg: 'Last name is required' });
   } else {
-    lastName = validator.trim(lastName);
-    lastName = validator.escape(lastName);
+    sanitizedData.lastName = validator.trim(lastName);
+    sanitizedData.lastName = validator.escape(sanitizedData.lastName);
   }
 
-  // Validate and sanitize email: Checks for valid format and normalizes for consistency.
+  // Validate and sanitize email
   if (!validator.isEmail(email || '')) {
     errors.push({ msg: 'Please include a valid email' });
   } else {
-    email = validator.normalizeEmail(email);
+    sanitizedData.email = validator.normalizeEmail(email);
   }
 
-  // Validate password length for security.
+  // Validate password
   if (!validator.isLength(password || '', { min: 6 })) {
     errors.push({ msg: 'Please enter a password with 6 or more characters' });
   }
+  sanitizedData.password = password; // Password kept as is for schema hashing
 
-  // Validate age: Checks if it's an integer greater than 0.
+  // Validate age (optional)
   if (age !== undefined) {
-    if (!validator.isInt(String(age), { gt: 0 })) {
+    if (!validator.isInt(String(age || ''), { gt: 0 })) { // Ensure string for validator.isInt
       errors.push({ msg: 'Age must be an integer greater than 0' });
+    } else {
+      sanitizedData.age = parseInt(age, 10);
     }
-    age = parseInt(age, 10); // Converts to integer after validation.
   }
 
-  // Validate gender against a predefined list.
+  // Validate gender (optional)
   const validGenders = ['Male', 'Female', 'Other'];
-  if (gender !== undefined && !validGenders.includes(gender)) {
-    errors.push({ msg: 'Gender must be Male, Female, or Other' });
+  if (gender !== undefined) {
+    if (!validGenders.includes(gender)) {
+      errors.push({ msg: 'Gender must be Male, Female, or Other' });
+    } else {
+      sanitizedData.gender = gender;
+    }
   }
 
-  // Validate and sanitize photoUrl: Checks for valid URL format.
-  if (photoUrl !== undefined && !validator.isURL(photoUrl || '')) {
-    errors.push({ msg: 'Photo URL must be a valid URL' });
+  // Validate and sanitize photoUrl (optional)
+  if (photoUrl !== undefined) {
+    if (!validator.isURL(photoUrl || '')) { // Ensure string for validator.isURL
+      errors.push({ msg: 'Photo URL must be a valid URL' });
+    } else {
+      sanitizedData.photoUrl = validator.trim(photoUrl);
+      // No escape for URL as it might break the URL
+    }
   }
-  photoUrl = photoUrl ? validator.trim(photoUrl) : photoUrl; // Trims if provided.
 
-  // Validate and sanitize about: Ensures string type and prevents XSS.
+  // Validate and sanitize about (optional)
   if (about !== undefined) {
     if (typeof about !== 'string') {
       errors.push({ msg: 'About must be a string' });
     } else {
-      about = validator.trim(about);
-      about = validator.escape(about);
+      sanitizedData.about = validator.trim(about);
+      sanitizedData.about = validator.escape(sanitizedData.about);
     }
   }
 
-  // Validate and sanitize skills: Ensures array of strings and prevents XSS in each skill.
+  // Validate and sanitize skills (optional)
   if (skills !== undefined) {
     if (!Array.isArray(skills)) {
       errors.push({ msg: 'Skills must be an array' });
     } else {
-      skills = skills.map(skill => {
+      sanitizedData.skills = skills.map(skill => {
         if (typeof skill !== 'string') {
           errors.push({ msg: 'Each skill must be a string' });
-          return null; // Invalid skills are filtered out.
+          return null;
         }
         return validator.trim(validator.escape(skill));
       }).filter(skill => skill !== null);
@@ -79,8 +90,8 @@ const validateSignupData = (data) => {
   }
 
   return {
-    errors, // Returns an array of validation error messages.
-    sanitizedData // Returns the cleaned and sanitized data.
+    errors,
+    sanitizedData
   };
 };
 

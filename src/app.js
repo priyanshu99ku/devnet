@@ -26,6 +26,7 @@ connectDB()
   })
   .catch((err) => {
     console.error("Database cannot be connected!!");
+    console.error(err.stack);
   });
 
 

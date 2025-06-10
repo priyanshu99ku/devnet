@@ -52,7 +52,19 @@ const userSchema = new mongoose.Schema({
     },
     skills: {
         type: [String] // Array of strings
-    }
+    },
+    connections: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    sentRequests: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ConnectionRequest'
+    }],
+    receivedRequests: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ConnectionRequest'
+    }]
 }, {
     timestamps: true
 });

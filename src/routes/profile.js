@@ -16,6 +16,7 @@ router.get("/profile", auth, async (req, res) => {
     res.send(user);
   } catch (err) {
     console.error(err.message);
+    console.error(err.stack);
     res.status(500).send("Server Error");
   }
 });
@@ -50,6 +51,7 @@ router.patch("/profile/edit", auth, async (req, res) => {
       return res.status(400).json({ msg: 'Email already exists' });
     }
     console.error(err.message);
+    console.error(err.stack);
     res.status(500).send("Server Error");
   }
 });
@@ -85,6 +87,7 @@ router.patch("/profile/password", auth, async (req, res) => {
       return res.status(400).json({ errors });
     }
     console.error(err.message);
+    console.error(err.stack);
     res.status(500).send('Server Error');
   }
 });
