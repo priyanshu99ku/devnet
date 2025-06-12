@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs'); // Import bcrypt
 const jwt = require('jsonwebtoken'); // Import jsonwebtoken
 
-const JWT_SECRET = 'your-secret-key'; // Define JWT Secret here for now
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // Use environment variable or fallback
 
 const userSchema = new mongoose.Schema({
     firstName: {

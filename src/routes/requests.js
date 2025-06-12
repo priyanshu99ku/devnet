@@ -171,48 +171,6 @@ router.post("/review/rejected/:requestId", auth, async (req, res) => {
 });
 
 // GET /connections - Get user's established connections
-router.get("/connections", auth, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const user = await User.findById(userId).populate('connections', '-password'); // Populate connections
 
-    if (!user) {
-      return res.status(404).json({ msg: 'User not found.' });
-    }
-
-    res.json({ message: 'Fetched user connections.', connections: user.connections });
-  } catch (error) {
-    console.error(error.message);
-    console.error(error.stack);
-    res.status(500).send('Server Error');
-  }
-});
-
-// GET /received - Get received connection requests
-router.get("/received", auth, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const user = await User.findById(userId).populate({
-      path: 'receivedRequests',
-      populate: {
-        path: 'sender',
-        select: '-password' // Exclude password from sender details
-      }
-    });
-
-    if (!user) {
-      return res.status(404).json({ msg: 'User not found.' });
-    }
-
-    // Filter requests to show only pending ones or all, based on your UI needs
-    const pendingRequests = user.receivedRequests.filter(req => req.status === 'pending');
-
-    res.json({ message: 'Fetched received connection requests.', requests: pendingRequests });
-  } catch (error) {
-    console.error(error.message);
-    console.error(error.stack);
-    res.status(500).send('Server Error');
-  }
-});
 
 module.exports = router;
