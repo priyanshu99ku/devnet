@@ -196,4 +196,28 @@ router.get('/all-connections', auth, async (req, res) => {
   }
 });
 
+// GET /received-users - Get all users who sent connection requests to the authenticated user
+router.get('/received-users', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Find all pending requests where the user is the recipient
+    const receivedRequests = await ConnectionRequest.find({
+      recipient: userId,
+      status: 'pending'
+    }).populate('sender', '-password');
+
+    // Extract the sender users from the requests
+    const requestingUsers = receivedRequests.map(request => request.sender);
+
+    res.json({
+      message: 'Users who sent connection requests retrieved successfully.',
+      users: requestingUsers
+    });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).send('Server Error');
+  }
+});
+
 module.exports = router;
