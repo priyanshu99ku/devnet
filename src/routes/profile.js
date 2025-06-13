@@ -22,7 +22,7 @@ router.get("/profile", auth, async (req, res) => {
 });
 
 // Patch Profile Edit API
-router.patch("/profile/edit", auth, async (req, res) => {
+router.patch("/edit", auth, async (req, res) => {
   const { errors, sanitizedData } = validateUpdateData(req.body);
 
   if (errors.length > 0) {
@@ -57,7 +57,7 @@ router.patch("/profile/edit", auth, async (req, res) => {
 });
 
 // Patch Profile Password API
-router.patch("/profile/password", auth, async (req, res) => {
+router.patch("/password", auth, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   if (!currentPassword || !newPassword) {
@@ -88,6 +88,38 @@ router.patch("/profile/password", auth, async (req, res) => {
     }
     console.error(err.message);
     console.error(err.stack);
+    res.status(500).send('Server Error');
+  }
+});
+
+// Get user by email (public, no auth)
+router.get("/", async (req, res) => {
+  const { email } = req.query;
+  if (!email) {
+    return res.status(400).json({ msg: "Email query parameter is required." });
+  }
+  try {
+    const user = await User.findOne({ email }).select('-password');
+    if (!user) {
+      return res.status(404).json({ msg: "User not found." });
+    }
+    res.json(user);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server Error");
+  }
+});
+
+// Delete user by ID
+router.delete('/:id', async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found.' });
+    }
+    res.json({ msg: 'User deleted successfully.' });
+  } catch (err) {
+    console.error(err.message);
     res.status(500).send('Server Error');
   }
 });

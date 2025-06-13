@@ -66,35 +66,6 @@ router.post("/sendInterestedUser", auth, async (req, res) => {
   }
 });
 
-// POST /sent/ignored/:requestId - Mark sent request as ignored by sender
-router.post("/sent/ignored/:requestId", auth, async (req, res) => {
-  try {
-    const { requestId } = req.params;
-    const userId = req.user.id; // The authenticated user (sender who is ignoring)
-
-    const request = await ConnectionRequest.findOne({ _id: requestId, sender: userId, status: 'pending' });
-
-    if (!request) {
-      return res.status(404).json({ msg: 'Pending request not found or not sent by you.' });
-    }
-
-    request.status = 'ignored';
-    await request.save();
-
-    // Optionally remove from sender's sentRequests array if you don't want to track ignored
-    // Or keep it and filter by status when fetching sent requests
-    await User.findByIdAndUpdate(userId, { $pull: { sentRequests: requestId } });
-
-    console.log(`Sent request ${requestId} ignored by sender ${userId}.`);
-    res.json({ message: 'Sent request marked as ignored successfully.' });
-
-  } catch (error) {
-    console.error(error.message);
-    console.error(error.stack);
-    res.status(500).send('Server Error');
-  }
-});
-
 // POST /review/accepted/:requestId - Accept a received request
 router.post("/review/accepted/:requestId", auth, async (req, res) => {
   try {
@@ -172,5 +143,57 @@ router.post("/review/rejected/:requestId", auth, async (req, res) => {
 
 // GET /connections - Get user's established connections
 
+// GET /accepted-connections - Get all users whose request is accepted by the authenticated user
+router.get('/accepted-connections', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    // Find all accepted connection requests where the authenticated user is the recipient
+    const acceptedRequests = await ConnectionRequest.find({
+      recipient: userId,
+      status: 'accepted'
+    }).populate('sender', '-password');
+
+    // Extract the sender user objects
+    const acceptedUsers = acceptedRequests.map(req => req.sender);
+
+    res.json({
+      message: 'Accepted connection requests received by user.',
+      users: acceptedUsers
+    });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// GET /all-connections - Get all users connected with the authenticated user
+router.get('/all-connections', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    // Find all accepted requests where the user is either sender or recipient
+    const acceptedRequests = await ConnectionRequest.find({
+      status: 'accepted',
+      $or: [
+        { recipient: userId },
+        { sender: userId }
+      ]
+    })
+    .populate('sender', '-password')
+    .populate('recipient', '-password');
+
+    // Collect the other user in each connection
+    const connectedUsers = acceptedRequests.map(req =>
+      req.sender._id.toString() === userId ? req.recipient : req.sender
+    );
+
+    res.json({
+      message: 'All connected users.',
+      users: connectedUsers
+    });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).send('Server Error');
+  }
+});
 
 module.exports = router;
