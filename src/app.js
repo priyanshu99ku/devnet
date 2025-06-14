@@ -5,21 +5,26 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const app = express();
 
+
+// Middleware
+app.use(cors({
+  origin: 'http://localhost:5173', // Explicitly set your frontend origin
+  credentials: true, // Allow credentials (cookies)
+ 
+}));
+
+app.use(express.json());
+app.use(cookieParser());
+
+
+
+
 // Import routers
 const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profile');
 const requestRoutes = require('./routes/requests');
 const feedRoutes = require('./routes/feedRoutes'); // Assuming feedRoutes.js was already handled or exists separately
 
-// Middleware
-app.use(cors({
-  origin: 'http://localhost:5173', // Explicitly set your frontend origin
-  credentials: true, // Allow credentials (cookies)
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-app.use(express.json());
-app.use(cookieParser());
 
 // Mount routers
 app.use('/auth', authRoutes); // Authentication routes (signup, login, logout)

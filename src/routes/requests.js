@@ -103,7 +103,10 @@ router.post("/review/accepted/:requestId", auth, async (req, res) => {
     await User.findByIdAndUpdate(recipientId, { $pull: { receivedRequests: requestId } });
 
     console.log(`Request ${requestId} accepted by user ${recipientId}.`);
-    res.json({ message: 'Connection request accepted successfully.' });
+    res.json({ 
+      message: 'Connection request accepted successfully.',
+      requestId: requestId 
+    });
 
   } catch (error) {
     console.error(error.message);
@@ -132,7 +135,10 @@ router.post("/review/rejected/:requestId", auth, async (req, res) => {
     await User.findByIdAndUpdate(recipientId, { $pull: { receivedRequests: requestId } });
 
     console.log(`Request ${requestId} rejected by user ${recipientId}.`);
-    res.json({ message: 'Connection request rejected successfully.' });
+    res.json({ 
+      message: 'Connection request rejected successfully.',
+      requestId: requestId 
+    });
 
   } catch (error) {
     console.error(error.message);
@@ -200,15 +206,17 @@ router.get('/all-connections', auth, async (req, res) => {
 router.get('/received-users', auth, async (req, res) => {
   try {
     const userId = req.user.id;
-    
     // Find all pending requests where the user is the recipient
     const receivedRequests = await ConnectionRequest.find({
       recipient: userId,
       status: 'pending'
     }).populate('sender', '-password');
 
-    // Extract the sender users from the requests
-    const requestingUsers = receivedRequests.map(request => request.sender);
+    // Attach connectionId to each sender user object
+    const requestingUsers = receivedRequests.map(request => ({
+      ...request.sender._doc,
+      connectionId: request._id
+    }));
 
     res.json({
       message: 'Users who sent connection requests retrieved successfully.',

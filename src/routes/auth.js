@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const { validateSignupData } = require('../utils/validation');
 const auth = require('../middleware/auth');
+const cors = require('cors');
 
 // Signup API
 router.post("/signup", async (req, res) => {
@@ -18,8 +19,22 @@ router.post("/signup", async (req, res) => {
     });
 
     await user.save();
-    console.log('User saved successfully:', user);
-    res.send("User Added successfully!");
+    const token = user.generateAuthToken();
+    const userData = user.toObject();
+    delete userData.password;
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 604800000,
+      sameSite: 'None'
+    });
+
+    res.json({
+      msg: 'Signup successful',
+      user: userData,
+      token
+    });
   } catch (err) {
     if (err.code === 11000) {
       return res.status(400).json({ msg: 'Email already exists' });
