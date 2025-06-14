@@ -1,9 +1,13 @@
 const mongoose = require("mongoose");
 
 const connectDB = async () => {
-  await mongoose.connect(
-    "mongodb+srv://priyanshukumar7393:Chikki1708@dev-cluster.ceroiob.mongodb.net/devnet?retryWrites=true&w=majority&appName=dev-cluster"
-  );
+  try {
+    await mongoose.connect(process.env.DB_STRING);
+    console.log("MongoDB connected successfully");
+  } catch (error) {
+    console.error("MongoDB connection error:", error);
+    process.exit(1); // Exit process with failure
+  }
 };
 
 module.exports = connectDB;
