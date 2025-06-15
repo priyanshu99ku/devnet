@@ -9,9 +9,8 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173', // Use environment variable for frontend URL
-  credentials: true, // Allow credentials (cookies)
- 
+  origin: 'https://dev-net.onrender.com',
+  credentials: true,
 }));
 
 app.use(express.json());
