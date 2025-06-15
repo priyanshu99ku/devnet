@@ -8,9 +8,6 @@ const auth = require('../middleware/auth');
 router.get("/", auth, async (req, res) => {
   try {
     const userId = req.user.id;
-    const page = parseInt(req.query.page) || 1;
-    const limit = 8;
-    const skip = (page - 1) * limit;
 
     // Get the current user with connections and requests
     const user = await User.findById(userId)
@@ -49,20 +46,11 @@ router.get("/", auth, async (req, res) => {
 
     // Query for users not in excludeIds
     const users = await User.find({ _id: { $nin: excludeIds } })
-      .select('-password')
-      .skip(skip)
-      .limit(limit);
-
-    // Get total count for pagination
-    const total = await User.countDocuments({ _id: { $nin: excludeIds } });
-    const totalPages = Math.ceil(total / limit);
+      .select('-password');
 
     res.json({
       message: "Welcome to the Feed!",
-      users,
-      page,
-      totalPages,
-      total
+      users
     });
   } catch (error) {
     console.error(error.message);
