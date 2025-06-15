@@ -14,15 +14,23 @@ const initializeSocket = (server) => {
   io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
-    socket.on('joinChat', () => {
-      // Handle user joining a chat room or logic here
-      console.log('User joined chat:', socket.id);
+    socket.on('joinRoom', ({ userId, chatWith }) => {
+      const room = [userId, chatWith].sort().join('_');
+      socket.join(room);
+      console.log(`${userId} joined room: ${room}`);
     });
 
-    socket.on('sendMessage', (message) => {
-      // Broadcast the message to all connected clients
-      io.emit('receiveMessage', message);
-      console.log('Message sent:', message);
+    socket.on('leaveRoom', ({ userId, chatWith }) => {
+      const room = [userId, chatWith].sort().join('_');
+      socket.leave(room);
+      console.log(`${userId} left room: ${room}`);
+    });
+
+    socket.on('message', ({ userId, chatWith, text }) => {
+      const room = [userId, chatWith].sort().join('_');
+      const msg = { userId, text, timestamp: new Date() };
+      socket.to(room).emit('message', msg);
+      console.log(`Message sent to room ${room}:`, msg);
     });
 
     socket.on('disconnect', () => {
