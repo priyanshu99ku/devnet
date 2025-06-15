@@ -9,7 +9,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173', // Explicitly set your frontend origin
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173', // Use environment variable for frontend URL
   credentials: true, // Allow credentials (cookies)
  
 }));
@@ -36,8 +36,9 @@ app.use('/feed', feedRoutes); // Mount feedRoutes under /feed
 connectDB()
   .then(() => {
     console.log("Database connection established...");
-    const server = app.listen(7777, () => {
-      console.log("Server is successfully listening on port 7777...");
+    const PORT = process.env.PORT || 7777; // Use Render's PORT or fallback to 7777
+    const server = app.listen(PORT, () => {
+      console.log(`Server is successfully listening on port ${PORT}...`);
     });
     initializeSocket(server);
   })
